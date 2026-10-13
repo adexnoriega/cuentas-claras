@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cuentas claras · Calculadora de ganancia real</title>
+<meta name="description" content="Calcule el costo, la ganancia real y el margen de su producto. Módulo 2 · Educación financiera · Secretaría de Desarrollo Económico y Competitividad, Alcaldía de Santa Marta.">
+<meta name="theme-color" content="#00568D">
+<meta name="color-scheme" content="light">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&family=Rubik:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --noche: #00568D;
+    --noche-osc: #003E66;
+    --celeste: #00ADE7;
+    --celeste-b: #8EC6E3;
+    --celeste-claro: #E3F3FB;
+    --sol: #FFDC2A;
+    --sol-osc: #C99A00;
+    --texto: #1E3344;
+    --texto-suave: #4A5D6E;
+    --fondo: #F4FAFD;
+    --blanco: #FFFFFF;
+    --borde: #BFE4F5;
+    --alerta: #B42318;
+    --alerta-fondo: #FEF0EE;
+    --radio: 18px;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: 'Nunito Sans', Arial, sans-serif;
+    font-size: 18px;
+    line-height: 1.45;
+  }
+  h1, h2, h3 { font-family: 'Rubik', Arial, sans-serif; margin: 0; line-height: 1.15; }
+
+  /* Encabezado */
+  .cabecera {
+    background: var(--noche);
+    color: var(--fondo);
+    padding: 28px 16px 36px;
+    position: relative;
+    overflow: hidden;
+  }
+  .cabecera::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 10px;
+    background: linear-gradient(90deg, var(--celeste) 0 60%, var(--sol) 60% 100%);
+  }
+  .cabecera .contenido { max-width: 640px; margin: 0 auto; display: flex; gap: 16px; align-items: center; }
+  .cabecera .textos { flex: 1; min-width: 0; }
+  .eyebrow { font-size: 13px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--sol); margin: 0 0 8px; }
+  .cabecera h1 { font-size: 34px; font-weight: 700; }
+  .cabecera p.sub { margin: 10px 0 0; color: #CFE8F5; font-size: 18px; }
+  .cabecera svg { flex: none; width: 96px; height: 96px; }
+
+  main { max-width: 640px; margin: 0 auto; padding: 0 16px 120px; }
+
+  .acciones-top { display: flex; gap: 10px; margin: -24px 0 20px; position: relative; }
+  .acciones-top .boton { flex: 1; justify-content: center; font-size: 16px; padding: 12px 14px; }
+  .boton {
+    appearance: none; border: 0; cursor: pointer; font: inherit; font-weight: 800;
+    border-radius: 999px; padding: 12px 20px; min-height: 48px; font-size: 17px;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .boton-sol { background: var(--sol); color: var(--noche-osc); box-shadow: 0 4px 14px rgba(0,62,102,.18); }
+  .boton-claro { background: var(--blanco); color: var(--noche); border: 2px solid var(--borde); }
+  .boton-linea { background: transparent; color: var(--noche); border: 2px dashed var(--celeste); width: 100%; justify-content: center; }
+  .boton:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid var(--sol-osc); outline-offset: 2px; }
+
+  .tarjeta {
+    background: var(--blanco);
+    border: 2px solid var(--borde);
+    border-radius: var(--radio);
+    padding: 20px 18px;
+    margin-bottom: 18px;
+  }
+  .paso { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
+  .num {
+    flex: none; width: 38px; height: 38px; border-radius: 50%;
+    background: var(--noche); color: var(--blanco);
+    font-family: 'Rubik', Arial, sans-serif; font-weight: 700; font-size: 19px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .paso h2 { font-size: 22px; color: var(--noche); font-weight: 700; }
+
+  label { display: block; font-weight: 700; font-size: 16px; margin: 0 0 6px; color: var(--texto); }
+  .ayuda { font-size: 15px; color: var(--texto-suave); margin: 6px 0 0; }
+  .campo { margin-bottom: 14px; }
+  .campo:last-child { margin-bottom: 0; }
+  input {
+    width: 100%; font: inherit; font-size: 20px; color: var(--texto);
+    background: var(--fondo); border: 2px solid var(--borde); border-radius: 12px;
+    padding: 12px 14px; min-height: 54px;
+  }
+  input:focus { border-color: var(--celeste); background: var(--blanco); outline: none; }
+  .dinero { position: relative; }
+  .dinero::before {
+    content: "$"; position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    font-weight: 800; color: var(--texto-suave); font-size: 20px; pointer-events: none;
+  }
+  .dinero input { padding-left: 32px; font-weight: 700; }
+
+  /* Filas de costos */
+  .fila { display: grid; grid-template-columns: 1fr 140px 44px; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .fila input { font-size: 18px; min-height: 50px; }
+  .fila .dinero input { font-size: 18px; }
+  .quitar {
+    width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--borde);
+    background: var(--blanco); color: var(--texto-suave); font-size: 22px; line-height: 1; cursor: pointer;
+  }
+  .encabezado-filas { display: grid; grid-template-columns: 1fr 140px 44px; gap: 8px; font-size: 14px; font-weight: 800; color: var(--texto-suave); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+  .total-costos {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    background: var(--celeste-claro); border-radius: 12px; padding: 12px 14px; margin-top: 14px;
+    font-weight: 800; color: var(--noche);
+  }
+  .total-costos span:last-child { font-family: 'Rubik', Arial, sans-serif; font-size: 22px; }
+
+  details.mayor { margin-top: 14px; border: 2px solid var(--borde); border-radius: 14px; background: var(--fondo); }
+  details.mayor summary { cursor: pointer; padding: 14px; font-weight: 800; color: var(--noche); list-style: none; display: flex; justify-content: space-between; gap: 10px; }
+  details.mayor summary::-webkit-details-marker { display: none; }
+  details.mayor summary::after { content: "+"; font-size: 22px; line-height: 1; }
+  details.mayor[open] summary::after { content: "−"; }
+  .mayor-cuerpo { padding: 0 14px 14px; }
+  .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .resultado-mayor { margin: 12px 0; font-size: 17px; }
+  .resultado-mayor b { font-family: 'Rubik', Arial, sans-serif; color: var(--noche); font-size: 22px; }
+
+  /* Resultados */
+  .resultado {
+    background: var(--noche); color: var(--fondo); border: 0;
+  }
+  .resultado .paso h2 { color: var(--blanco); }
+  .resultado .num { background: var(--sol); color: var(--noche-osc); }
+  .vacio { color: #CFE8F5; margin: 0; }
+  .grande { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .dato { background: rgba(255,255,255,.08); border-radius: 14px; padding: 14px; }
+  .dato.destacado { background: var(--sol); color: var(--noche-osc); grid-column: 1 / -1; }
+  .dato .etq { font-size: 15px; font-weight: 700; color: #CFE8F5; }
+  .dato.destacado .etq { color: var(--noche-osc); }
+  .dato .val { font-family: 'Rubik', Arial, sans-serif; font-weight: 700; font-size: 30px; line-height: 1.1; margin-top: 4px; overflow-wrap: anywhere; }
+  .dato.destacado .val { font-size: 44px; }
+  .barra { display: flex; height: 34px; border-radius: 10px; overflow: hidden; background: rgba(255,255,255,.12); margin: 6px 0 8px; }
+  .barra > div { height: 100%; transition: width .3s ease; }
+  .leyenda { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 15px; color: #CFE8F5; }
+  .leyenda i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; }
+  .mensaje { border-radius: 12px; padding: 12px 14px; margin-top: 14px; font-weight: 700; background: rgba(255,255,255,.1); }
+  .mensaje.malo { background: var(--alerta-fondo); color: var(--alerta); }
+  .mensaje.ojo { background: #FFF6CC; color: #5C4600; }
+
+  .claro .dato { background: var(--celeste-claro); }
+  .claro .dato .etq { color: var(--texto-suave); }
+  .claro .dato .val { color: var(--noche); }
+  .claro .dato.destacado { background: var(--noche); }
+  .claro .dato.destacado .etq { color: #CFE8F5; }
+  .claro .dato.destacado .val { color: var(--blanco); }
+  .claro .barra { background: var(--celeste-claro); }
+  .claro .leyenda { color: var(--texto-suave); }
+  .claro .mensaje { background: var(--celeste-claro); color: var(--noche); }
+  .claro .mensaje.malo { background: var(--alerta-fondo); color: var(--alerta); }
+
+  .pie { text-align: center; font-size: 15px; color: var(--texto-suave); margin: 28px 0 0; }
+  .pie b { color: var(--noche); }
+
+  /* Barra fija inferior */
+  .fija {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+    background: var(--noche-osc); color: var(--blanco);
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    box-shadow: 0 -6px 18px rgba(0,30,60,.25);
+    transform: translateY(110%); transition: transform .25s ease;
+  }
+  .fija.visible { transform: translateY(0); }
+  .fija .contenido { max-width: 640px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .fija .etq { font-size: 13px; color: #CFE8F5; font-weight: 700; }
+  .fija .val { font-family: 'Rubik', Arial, sans-serif; font-size: 24px; font-weight: 700; }
+  .fija .val.neg { color: #FFB4AB; }
+  .fija .der { text-align: right; }
+
+  @media (max-width: 420px) {
+    .cabecera h1 { font-size: 29px; }
+    .cabecera svg { width: 76px; height: 76px; }
+    .fila, .encabezado-filas { grid-template-columns: 1fr 118px 44px; }
+    .dato .val { font-size: 25px; }
+    .dato.destacado .val { font-size: 38px; }
+  }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<header class="cabecera">
+  <div class="contenido">
+    <div class="textos">
+      <p class="eyebrow">Módulo 2 · Cuentas claras</p>
+      <h1>¿Cuánto le queda de verdad?</h1>
+      <p class="sub">Calcule la ganancia real de su producto en un minuto.</p>
+    </div>
+    <svg viewBox="0 0 96 96" aria-hidden="true">
+      <circle cx="48" cy="48" r="46" fill="#0A67A4"/>
+      <rect x="28" y="16" width="40" height="60" rx="8" fill="#FFFFFF"/>
+      <rect x="33" y="21" width="30" height="13" rx="3" fill="#003E66"/>
+      <rect x="46" y="25" width="13" height="5" rx="1" fill="#FFDC2A"/>
+      <rect x="33" y="39" width="8" height="7" rx="2" fill="#CFE8F5"/><rect x="44" y="39" width="8" height="7" rx="2" fill="#CFE8F5"/><rect x="55" y="39" width="8" height="7" rx="2" fill="#8EC6E3"/>
+      <rect x="33" y="49" width="8" height="7" rx="2" fill="#CFE8F5"/><rect x="44" y="49" width="8" height="7" rx="2" fill="#CFE8F5"/><rect x="55" y="49" width="8" height="7" rx="2" fill="#8EC6E3"/>
+      <rect x="33" y="59" width="8" height="7" rx="2" fill="#CFE8F5"/><rect x="44" y="59" width="8" height="7" rx="2" fill="#CFE8F5"/><rect x="55" y="59" width="8" height="7" rx="2" fill="#FFDC2A"/>
+      <path d="M54 84 a14 14 0 0 1 28 0 z" fill="#FFDC2A" stroke="#C99A00" stroke-width="2"/>
+      <circle cx="20" cy="70" r="9" fill="#FFDC2A" stroke="#C99A00" stroke-width="2"/>
+    </svg>
+  </div>
+</header>
+
+<main>
+  <div class="acciones-top">
+    <button class="boton boton-sol" type="button" id="ejemplo" aria-label="Ver ejemplo con una empanada">Ver ejemplo</button>
+    <button class="boton boton-claro" type="button" id="borrar">Borrar todo</button>
+  </div>
+
+  <!-- Paso 1 -->
+  <section class="tarjeta" aria-labelledby="t1">
+    <div class="paso"><span class="num">1</span><h2 id="t1">Su producto</h2></div>
+    <div class="campo">
+      <label for="producto">¿Qué producto o servicio vende?</label>
+      <input id="producto" type="text" placeholder="Ej: empanada, jugo, corte de cabello" autocomplete="off" maxlength="60">
+    </div>
+    <div class="campo">
+      <label for="precio">¿En cuánto vende una unidad?</label>
+      <div class="dinero"><input id="precio" type="text" inputmode="numeric" placeholder="0" autocomplete="off" data-dinero></div>
+    </div>
+  </section>
+
+  <!-- Paso 2 -->
+  <section class="tarjeta" aria-labelledby="t2">
+    <div class="paso"><span class="num">2</span><h2 id="t2">¿Cuánto le cuesta hacer una unidad?</h2></div>
+    <p class="ayuda" style="margin:0 0 14px">Anote todo lo que gasta en <b>una sola unidad</b>: insumos, gas o luz, empaque y hasta el pasaje para ir a comprar.</p>
+    <div class="encabezado-filas" aria-hidden="true"><span>Qué lleva</span><span>Cuesta</span><span></span></div>
+    <div id="filas"></div>
+    <button class="boton boton-linea" type="button" id="agregar">+ Agregar otro costo</button>
+
+    <details class="mayor" id="mayor">
+      <summary>¿Compra al por mayor? Saque el costo de una unidad</summary>
+      <div class="mayor-cuerpo">
+        <p class="ayuda" style="margin:0 0 12px">Ejemplo: una libra de carne de $16.000 alcanza para 32 empanadas. Cada empanada lleva $500 de carne.</p>
+        <div class="campo">
+          <label for="m-nombre">¿Qué compró?</label>
+          <input id="m-nombre" type="text" placeholder="Ej: libra de carne" autocomplete="off" maxlength="40">
+        </div>
+        <div class="dos">
+          <div class="campo">
+            <label for="m-pago">¿Cuánto pagó?</label>
+            <div class="dinero"><input id="m-pago" type="text" inputmode="numeric" placeholder="0" autocomplete="off" data-dinero></div>
+          </div>
+          <div class="campo">
+            <label for="m-rinde">¿Para cuántas unidades alcanza?</label>
+            <input id="m-rinde" type="text" inputmode="numeric" placeholder="0" autocomplete="off" data-entero>
+          </div>
+        </div>
+        <p class="resultado-mayor" id="m-resultado" aria-live="polite">Escriba cuánto pagó y para cuántas unidades le alcanza.</p>
+        <button class="boton boton-sol" type="button" id="m-agregar" disabled>Agregar a mis costos</button>
+      </div>
+    </details>
+
+    <div class="total-costos"><span>Costo total de una unidad</span><span id="total-costo">$0</span></div>
+  </section>
+
+  <!-- Resultado por unidad -->
+  <section class="tarjeta resultado" aria-labelledby="t3" aria-live="polite">
+    <div class="paso"><span class="num">=</span><h2 id="t3">Su ganancia real por unidad</h2></div>
+    <div id="res-unidad"></div>
+  </section>
+
+  <!-- Paso 3 -->
+  <section class="tarjeta" aria-labelledby="t4">
+    <div class="paso"><span class="num">3</span><h2 id="t4">Las ventas de un día normal</h2></div>
+    <div class="campo">
+      <label for="unidades">¿Cuántas unidades vende en un día normal?</label>
+      <input id="unidades" type="text" inputmode="numeric" placeholder="0" autocomplete="off" data-entero>
+    </div>
+    <div id="res-dia" class="claro" aria-live="polite"></div>
+  </section>
+
+  <!-- Paso 4 -->
+  <section class="tarjeta" aria-labelledby="t5">
+    <div class="paso"><span class="num">4</span><h2 id="t5">Sus dos bolsillos: la casa y el negocio</h2></div>
+    <div class="dos">
+      <div class="campo">
+        <label for="sueldo">Su sueldo fijo del día</label>
+        <div class="dinero"><input id="sueldo" type="text" inputmode="numeric" placeholder="0" autocomplete="off" data-dinero></div>
+      </div>
+      <div class="campo">
+        <label for="pct">Ahorro para el colchón (%)</label>
+        <input id="pct" type="text" inputmode="numeric" value="5" autocomplete="off" data-entero maxlength="3">
+      </div>
+    </div>
+    <p class="ayuda" style="margin-top:0">El sueldo sale de la ganancia real, nunca de las ventas.</p>
+    <div id="res-reparto" class="claro" aria-live="polite"></div>
+  </section>
+
+  <p class="pie">Sus números <b>no se envían a ninguna parte</b>: se quedan solo en este celular.<br>
+  Ruta 500+ · Fase ELEVA · Secretaría de Desarrollo Económico y Competitividad · Alcaldía de Santa Marta</p>
+</main>
+
+<div class="fija" id="fija" aria-hidden="true">
+  <div class="contenido">
+    <div><div class="etq">Ganancia real por unidad</div><div class="val" id="fija-gan">$0</div></div>
+    <div class="der"><div class="etq">Margen</div><div class="val" id="fija-margen">0 %</div></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var CLAVE = 'cuentas-claras-v1';
+  var nf = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 });
+  function plata(n) { var s = nf.format(Math.abs(Math.round(n))); return (n < 0 ? '−$' : '$') + s; }
+  function pct(n) { return (Math.round(n * 10) / 10).toString().replace('.', ',') + ' %'; }
+  function num(v) { var d = String(v || '').replace(/\D/g, ''); return d ? parseInt(d, 10) : 0; }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  var $ = function (id) { return document.getElementById(id); };
+  var estado = { producto: '', precio: 0, costos: [], unidades: 0, sueldo: 0, pct: 5 };
+
+  // Formatear dinero mientras se escribe, manteniendo el cursor
+  function formatear(el) {
+    var pos = el.selectionStart || 0;
+    var antes = el.value.slice(0, pos).replace(/\D/g, '').length;
+    var dig = el.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '').slice(0, 11);
+    var f = dig ? (el.hasAttribute('data-dinero') ? nf.format(parseInt(dig, 10)) : dig) : '';
+    el.value = f;
+    var i = 0, c = 0;
+    while (i < f.length && c < antes) { if (/\d/.test(f[i])) c++; i++; }
+    try { el.setSelectionRange(i, i); } catch (e) {}
+  }
+  function valorCampo(n, dinero) { return n ? (dinero ? nf.format(n) : String(n)) : ''; }
+
+  // ---- Filas de costos ----
+  var filas = $('filas');
+  function pintarFilas() {
+    filas.innerHTML = '';
+    estado.costos.forEach(function (c, i) {
+      var div = document.createElement('div');
+      div.className = 'fila';
+      div.innerHTML =
+        '<input type="text" aria-label="Qué lleva (costo ' + (i + 1) + ')" placeholder="Ej: ' + esc(c.ph || 'insumo') + '" value="' + esc(c.nombre) + '" maxlength="40" data-i="' + i + '" data-k="nombre">' +
+        '<div class="dinero"><input type="text" inputmode="numeric" aria-label="Cuánto cuesta (costo ' + (i + 1) + ')" placeholder="0" value="' + valorCampo(c.valor, true) + '" data-dinero data-i="' + i + '" data-k="valor"></div>' +
+        '<button type="button" class="quitar" aria-label="Quitar costo ' + (i + 1) + '" data-quitar="' + i + '">×</button>';
+      filas.appendChild(div);
+    });
+  }
+  filas.addEventListener('input', function (e) {
+    var t = e.target, i = +t.getAttribute('data-i'), k = t.getAttribute('data-k');
+    if (isNaN(i) || !k) return;
+    if (k === 'valor') { formatear(t); estado.costos[i].valor = num(t.value); }
+    else estado.costos[i].nombre = t.value;
+    calcular();
+  });
+  filas.addEventListener('click', function (e) {
+    var q = e.target.getAttribute && e.target.getAttribute('data-quitar');
+    if (q === null || q === undefined) return;
+    estado.costos.splice(+q, 1);
+    if (!estado.costos.length) estado.costos.push({ nombre: '', valor: 0, ph: 'insumo' });
+    pintarFilas(); calcular();
+  });
+  $('agregar').addEventListener('click', function () {
+    estado.costos.push({ nombre: '', valor: 0, ph: 'otro costo' });
+    pintarFilas();
+    var ins = filas.querySelectorAll('.fila');
+    ins[ins.length - 1].querySelector('input').focus();
+    guardar();
+  });
+
+  // ---- Campos simples ----
+  function enlazar(id, clave, tipo) {
+    var el = $(id);
+    el.addEventListener('input', function () {
+      if (tipo === 'texto') estado[clave] = el.value;
+      else { formatear(el); estado[clave] = num(el.value); }
+      calcular();
+    });
+  }
+  enlazar('producto', 'producto', 'texto');
+  enlazar('precio', 'precio');
+  enlazar('unidades', 'unidades');
+  enlazar('sueldo', 'sueldo');
+  enlazar('pct', 'pct');
+
+  // ---- Compra al por mayor ----
+  function calcMayor() {
+    var pago = num($('m-pago').value), rinde = num($('m-rinde').value);
+    var r = $('m-resultado'), b = $('m-agregar');
+    if (pago && rinde) {
+      var u = Math.round(pago / rinde);
+      r.innerHTML = 'Le sale a <b>' + plata(u) + '</b> por unidad.';
+      b.disabled = false; b.dataset.valor = u;
+    } else {
+      r.textContent = 'Escriba cuánto pagó y para cuántas unidades le alcanza.';
+      b.disabled = true;
+    }
+  }
+  ['m-pago', 'm-rinde'].forEach(function (id) {
+    $(id).addEventListener('input', function () { formatear(this); calcMayor(); });
+  });
+  $('m-agregar').addEventListener('click', function () {
+    var nombre = $('m-nombre').value.trim() || 'Compra al por mayor';
+    var v = +this.dataset.valor || 0;
+    var vacia = estado.costos.findIndex(function (c) { return !c.nombre && !c.valor; });
+    if (vacia >= 0) estado.costos[vacia] = { nombre: nombre, valor: v };
+    else estado.costos.push({ nombre: nombre, valor: v });
+    $('m-nombre').value = ''; $('m-pago').value = ''; $('m-rinde').value = '';
+    calcMayor(); pintarFilas(); calcular();
+    $('total-costo').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+
+  // ---- Cálculos ----
+  function calcular() {
+    var costo = estado.costos.reduce(function (s, c) { return s + (c.valor || 0); }, 0);
+    var precio = estado.precio;
+    var gan = precio - costo;
+    var margen = precio > 0 ? gan / precio * 100 : 0;
+    var nombre = estado.producto.trim();
+    var deQue = nombre ? ' de ' + esc(nombre) : '';
+
+    $('total-costo').textContent = plata(costo);
+
+    // Resultado por unidad
+    var ru = $('res-unidad');
+    if (!precio) {
+      ru.innerHTML = '<p class="vacio">Escriba el precio de venta y lo que le cuesta cada unidad para ver su ganancia real.</p>';
+    } else {
+      var anchoCosto = Math.max(0, Math.min(100, costo / precio * 100));
+      var msg;
+      if (gan < 0) msg = '<div class="mensaje malo">Está perdiendo ' + plata(-gan) + ' en cada unidad' + deQue + '. Le cuesta más hacerla que lo que cobra. Revise el precio o los costos.</div>';
+      else if (gan === 0) msg = '<div class="mensaje ojo">No está ganando nada: lo que cobra solo alcanza para reponer lo que gastó.</div>';
+      else if (margen < 15) msg = '<div class="mensaje ojo">Su margen es bajo: de cada $100 que vende, le quedan ' + plata(margen) + '. Revise si puede subir un poco el precio o comprar más barato.</div>';
+      else msg = '<div class="mensaje">De cada $100 que vende, le quedan <b>' + plata(margen) + '</b> de ganancia real.</div>';
+      ru.innerHTML =
+        '<div class="grande">' +
+          '<div class="dato destacado"><div class="etq">Ganancia real por unidad (' + plata(precio) + ' − ' + plata(costo) + ')</div><div class="val">' + plata(gan) + '</div></div>' +
+          '<div class="dato"><div class="etq">Costo por unidad</div><div class="val">' + plata(costo) + '</div></div>' +
+          '<div class="dato"><div class="etq">Margen</div><div class="val">' + pct(margen) + '</div></div>' +
+        '</div>' +
+        '<div class="etq" style="font-size:15px;font-weight:700;color:#CFE8F5">Así se reparte el precio de venta:</div>' +
+        '<div class="barra" role="img" aria-label="Del precio de venta, ' + Math.round(anchoCosto) + ' por ciento es costo y ' + Math.round(100 - anchoCosto) + ' por ciento es ganancia real">' +
+          '<div style="width:' + anchoCosto + '%;background:#8EC6E3"></div>' +
+          '<div style="width:' + (100 - anchoCosto) + '%;background:#FFDC2A"></div>' +
+        '</div>' +
+        '<div class="leyenda"><span><i style="background:#8EC6E3"></i>Costo: ' + plata(Math.min(costo, precio)) + '</span><span><i style="background:#FFDC2A"></i>Ganancia real: ' + plata(Math.max(gan, 0)) + '</span></div>' +
+        msg;
+    }
+
+    // Día
+    var u = estado.unidades;
+    var rd = $('res-dia');
+    var ganDia = gan * u;
+    if (!precio || !u) {
+      rd.innerHTML = '<p class="ayuda">Cuando escriba cuántas vende, aquí verá cuánto entra y cuánto le queda en el día.</p>';
+    } else {
+      rd.innerHTML =
+        '<div class="grande">' +
+          '<div class="dato"><div class="etq">Entra por ventas</div><div class="val">' + plata(precio * u) + '</div></div>' +
+          '<div class="dato"><div class="etq">Plata para volver a surtir</div><div class="val">' + plata(costo * u) + '</div></div>' +
+          '<div class="dato destacado"><div class="etq">Ganancia real del día</div><div class="val">' + plata(ganDia) + '</div></div>' +
+        '</div>' +
+        (ganDia > 0
+          ? '<div class="mensaje">Vende ' + plata(precio * u) + ', pero solo <b>' + plata(ganDia) + '</b> son ganancia. Los otros ' + plata(costo * u) + ' son para volver a surtir.</div>'
+          : '<div class="mensaje malo">Con estos números el negocio no deja ganancia en el día.</div>');
+    }
+
+    // Reparto
+    var rr = $('res-reparto');
+    var p = Math.min(estado.pct, 100);
+    if (!precio || !u || ganDia <= 0) {
+      rr.innerHTML = '<p class="ayuda">Primero complete los pasos anteriores. Aquí verá cómo repartir la ganancia real del día.</p>';
+    } else {
+      var colchon = Math.round(ganDia * p / 100);
+      var sueldo = estado.sueldo;
+      var negocio = ganDia - sueldo - colchon;
+      var segs = [
+        { v: Math.max(0, Math.min(sueldo, ganDia)), c: '#00568D', t: 'Sueldo' },
+        { v: Math.max(0, Math.min(colchon, ganDia - Math.min(sueldo, ganDia))), c: '#FFDC2A', t: 'Colchón' },
+        { v: Math.max(0, negocio), c: '#00ADE7', t: 'Negocio' }
+      ];
+      var barra = segs.map(function (s) { return '<div style="width:' + (s.v / ganDia * 100) + '%;background:' + s.c + '"></div>'; }).join('');
+      var msgR;
+      if (negocio < 0) msgR = '<div class="mensaje malo">Su sueldo y su ahorro suman ' + plata(-negocio) + ' más de lo que el negocio deja en el día. Baje el sueldo o revise precios y costos.</div>';
+      else if (!sueldo) msgR = '<div class="mensaje">Escriba un sueldo fijo para usted. Un sueldo bajo y constante es mejor que uno alto que deja al negocio sin plata.</div>';
+      else msgR = '<div class="mensaje">Con un colchón de ' + plata(colchon) + ' al día, en una semana de 6 días junta <b>' + plata(colchon * 6) + '</b> y en 4 semanas, <b>' + plata(colchon * 24) + '</b>.</div>';
+      rr.innerHTML =
+        '<div class="barra" role="img" aria-label="Reparto de la ganancia real del día entre sueldo, colchón y negocio">' + barra + '</div>' +
+        '<div class="leyenda" style="margin-bottom:12px"><span><i style="background:#00568D"></i>Sueldo</span><span><i style="background:#FFDC2A"></i>Colchón</span><span><i style="background:#00ADE7"></i>Se queda en el negocio</span></div>' +
+        '<div class="grande">' +
+          '<div class="dato"><div class="etq">Sueldo para la casa</div><div class="val">' + plata(sueldo) + '</div></div>' +
+          '<div class="dato"><div class="etq">Colchón (' + p + ' %)</div><div class="val">' + plata(colchon) + '</div></div>' +
+          '<div class="dato destacado"><div class="etq">Se queda en el negocio para surtir y crecer</div><div class="val">' + plata(negocio) + '</div></div>' +
+        '</div>' + msgR;
+    }
+
+    // Barra fija
+    var fija = $('fija');
+    fija.classList.toggle('visible', precio > 0);
+    $('fija-gan').textContent = plata(gan);
+    $('fija-gan').classList.toggle('neg', gan < 0);
+    $('fija-margen').textContent = precio ? pct(margen) : '0 %';
+
+    guardar();
+  }
+
+  // ---- Guardar en este celular ----
+  function guardar() {
+    try { localStorage.setItem(CLAVE, JSON.stringify(estado)); } catch (e) {}
+  }
+  function cargar() {
+    try {
+      var d = JSON.parse(localStorage.getItem(CLAVE) || 'null');
+      if (d && Array.isArray(d.costos)) estado = Object.assign(estado, d);
+    } catch (e) {}
+  }
+  function costosIniciales() {
+    return [
+      { nombre: '', valor: 0, ph: 'insumo principal' },
+      { nombre: '', valor: 0, ph: 'otro insumo' },
+      { nombre: '', valor: 0, ph: 'gas o luz' },
+      { nombre: '', valor: 0, ph: 'empaque o bolsa' }
+    ];
+  }
+  function pintarTodo() {
+    $('producto').value = estado.producto || '';
+    $('precio').value = valorCampo(estado.precio, true);
+    $('unidades').value = valorCampo(estado.unidades);
+    $('sueldo').value = valorCampo(estado.sueldo, true);
+    $('pct').value = String(estado.pct);
+    pintarFilas(); calcular();
+  }
+
+  $('ejemplo').addEventListener('click', function () {
+    estado = {
+      producto: 'Empanada', precio: 2000, unidades: 100, sueldo: 50000, pct: 5,
+      costos: [
+        { nombre: 'Masa', valor: 300 }, { nombre: 'Relleno', valor: 500 },
+        { nombre: 'Aceite', valor: 150 }, { nombre: 'Gas', valor: 100 },
+        { nombre: 'Empaque o servilleta', valor: 50 }
+      ]
+    };
+    pintarTodo();
+  });
+  $('borrar').addEventListener('click', function () {
+    estado = { producto: '', precio: 0, costos: costosIniciales(), unidades: 0, sueldo: 0, pct: 5 };
+    pintarTodo();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    $('producto').focus();
+  });
+
+  cargar();
+  if (!estado.costos.length) estado.costos = costosIniciales();
+  pintarTodo();
+})();
+</script>
+</body>
+</html>
