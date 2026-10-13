@@ -166,6 +166,9 @@
   .claro .mensaje { background: var(--celeste-claro); color: var(--noche); }
   .claro .mensaje.malo { background: var(--alerta-fondo); color: var(--alerta); }
 
+  .compromisos { margin: 6px 0 0; padding-left: 26px; }
+  .compromisos li { margin-bottom: 10px; font-weight: 600; color: var(--texto); }
+  .compromisos li::marker { color: var(--noche); font-weight: 800; }
   .evidencia { border-color: var(--sol); border-width: 3px; }
   .boton-ancho { width: 100%; justify-content: center; font-size: 19px; min-height: 58px; }
   .pdf-estado { font-weight: 700; min-height: 1em; }
@@ -316,9 +319,26 @@
     <div id="res-reparto" class="claro" aria-live="polite"></div>
   </section>
 
-  <!-- Paso 5: evidencia -->
+  <!-- Paso 5: compromisos -->
+  <section class="tarjeta" aria-labelledby="t7">
+    <div class="paso"><span class="num">5</span><h2 id="t7">Mis compromisos de esta semana</h2></div>
+    <div class="dos">
+      <div class="campo">
+        <label for="meta">Meta de ahorro de la semana</label>
+        <div class="dinero"><input id="meta" type="text" inputmode="numeric" placeholder="0" autocomplete="off" data-dinero></div>
+      </div>
+      <div class="campo">
+        <label for="lugar">¿Dónde lo va a guardar?</label>
+        <input id="lugar" type="text" placeholder="Ej: bolsillo en Nequi" autocomplete="off" maxlength="40">
+      </div>
+    </div>
+    <p class="ayuda" id="meta-sugerida" style="margin-top:0"></p>
+    <ol class="compromisos" id="lista-compromisos"></ol>
+  </section>
+
+  <!-- Paso 6: evidencia -->
   <section class="tarjeta evidencia" aria-labelledby="t6">
-    <div class="paso"><span class="num">5</span><h2 id="t6">Guarde su evidencia</h2></div>
+    <div class="paso"><span class="num">6</span><h2 id="t6">Guarde su evidencia</h2></div>
     <p class="ayuda" style="margin:0 0 14px">Descargue un PDF con sus costos y sus cálculos. Guárdelo: más adelante se lo pueden pedir como evidencia del Módulo 2.</p>
     <button class="boton boton-sol boton-ancho" type="button" id="pdf">
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 19h16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -352,7 +372,7 @@
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
   var $ = function (id) { return document.getElementById(id); };
-  var estado = { nombre: '', unidad: '', producto: '', precio: 0, costos: [], unidades: 0, sueldo: 0, pct: 5 };
+  var estado = { nombre: '', unidad: '', producto: '', precio: 0, costos: [], unidades: 0, sueldo: 0, pct: 5, meta: 0, lugar: '' };
 
   // Formatear dinero mientras se escribe, manteniendo el cursor
   function formatear(el) {
@@ -419,6 +439,8 @@
   enlazar('unidades', 'unidades');
   enlazar('sueldo', 'sueldo');
   enlazar('pct', 'pct');
+  enlazar('meta', 'meta');
+  enlazar('lugar', 'lugar', 'texto');
 
   // ---- Compra al por mayor ----
   function calcMayor() {
@@ -446,6 +468,29 @@
     calcMayor(); pintarFilas(); calcular();
     $('total-costo').scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
+
+  // ---- Compromisos ----
+  function ahorroSugerido() {
+    var costo = estado.costos.reduce(function (s, c) { return s + (c.valor || 0); }, 0);
+    var ganDia = (estado.precio - costo) * estado.unidades;
+    return ganDia > 0 ? Math.round(ganDia * Math.min(estado.pct, 100) / 100) * 6 : 0;
+  }
+  function textosCompromisos(fmt) {
+    var meta = estado.meta || ahorroSugerido();
+    var lugar = estado.lugar.trim();
+    return [
+      'Anotar todos los días en el cuaderno de caja lo que entra y lo que sale.',
+      'Ahorrar ' + (meta ? fmt(meta) : '$ ______') + ' esta semana y guardarlo en ' + (lugar || '______________') + ', fuera de la caja de la Unidad Productiva.',
+      'Poner el QR visible en el puesto y revisar en mi app que cada pago llegó: un pantallazo no es prueba de pago.'
+    ];
+  }
+  function pintarCompromisos() {
+    var sug = ahorroSugerido();
+    $('meta-sugerida').textContent = sug && !estado.meta
+      ? 'Sugerencia: con su colchón diario, en 6 días junta ' + plata(sug) + '. Puede escribir otra meta.'
+      : '';
+    $('lista-compromisos').innerHTML = textosCompromisos(plata).map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('');
+  }
 
   // ---- Cálculos ----
   function calcular() {
@@ -538,6 +583,7 @@
     $('fija-gan').classList.toggle('neg', gan < 0);
     $('fija-margen').textContent = precio ? pct(margen) : '0 %';
 
+    pintarCompromisos();
     guardar();
   }
 
@@ -567,12 +613,14 @@
     $('unidades').value = valorCampo(estado.unidades);
     $('sueldo').value = valorCampo(estado.sueldo, true);
     $('pct').value = String(estado.pct);
+    $('meta').value = valorCampo(estado.meta, true);
+    $('lugar').value = estado.lugar || '';
     pintarFilas(); calcular();
   }
 
   $('ejemplo').addEventListener('click', function () {
     estado = {
-      nombre: estado.nombre, unidad: estado.unidad,
+      nombre: estado.nombre, unidad: estado.unidad, meta: 0, lugar: '',
       producto: 'Empanada', precio: 2000, unidades: 100, sueldo: 50000, pct: 5,
       costos: [
         { nombre: 'Masa', valor: 300 }, { nombre: 'Relleno', valor: 500 },
@@ -583,7 +631,7 @@
     pintarTodo();
   });
   $('borrar').addEventListener('click', function () {
-    estado = { nombre: '', unidad: '', producto: '', precio: 0, costos: costosIniciales(), unidades: 0, sueldo: 0, pct: 5 };
+    estado = { nombre: '', unidad: '', producto: '', precio: 0, costos: costosIniciales(), unidades: 0, sueldo: 0, pct: 5, meta: 0, lugar: '' };
     pintarTodo();
     window.scrollTo({ top: 0, behavior: 'smooth' });
     $('nombre').focus();
@@ -699,39 +747,49 @@
       didParseCell: function (data) { if ((data.section === 'head' || data.section === 'foot') && data.column.index === 1) data.cell.styles.halign = 'right'; }
     });
 
-    // 2. Ganancia por unidad
-    titulo('2. Ganancia real por unidad');
-    tabla({
+    // 2 y 3. Ganancia por unidad y día normal (lado a lado)
+    var MITAD = (ANCHO - 6) / 2;
+    function tablaEn(opc, izq, ancho, startY) {
+      doc.autoTable(Object.assign({}, base, opc, {
+        startY: startY, margin: { left: izq, right: 210 - izq - ancho }, tableWidth: ancho,
+        columnStyles: { 1: { halign: 'right', cellWidth: 27 } }
+      }));
+      return doc.lastAutoTable.finalY;
+    }
+    function tituloEn(t, x) {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor.apply(doc, NOCHE);
+      doc.text(t, x, y);
+    }
+    if (y > 240) { doc.addPage(); y = 20; }
+    var cabeza = function (data) { if (data.section === 'head' && data.column.index === 1) data.cell.styles.halign = 'right'; };
+    var anchoUnidad = u ? MITAD : ANCHO;
+    tituloEn('2. Ganancia real por unidad', M);
+    if (u) tituloEn('3. Un día normal de ventas', M + MITAD + 6);
+    y += 2.5;
+    var fin1 = tablaEn({
       head: [['Cálculo', 'Resultado']],
       body: [
         ['Precio de venta', pdfPlata(precio)],
         ['Costo total por unidad', pdfPlata(costo)],
-        ['Ganancia real por unidad (precio - costo)', pdfPlata(gan)],
-        ['Margen (ganancia real ÷ precio × 100)', pdfPct(margen)]
+        ['Ganancia real (precio - costo)', pdfPlata(gan)],
+        ['Margen (ganancia ÷ precio × 100)', pdfPct(margen)]
       ],
-      didParseCell: function (data) {
-        resaltar(2)(data);
-        if (data.section === 'head' && data.column.index === 1) data.cell.styles.halign = 'right';
-      }
-    });
-
-    // 3. Día
+      didParseCell: function (data) { resaltar(2)(data); cabeza(data); }
+    }, M, anchoUnidad, y);
+    var fin2 = fin1;
     if (u) {
-      titulo('3. Un día normal de ventas');
-      tabla({
+      fin2 = tablaEn({
         head: [['Cálculo', 'Resultado']],
         body: [
-          ['Unidades que vende en un día normal', nf.format(u)],
-          ['Entra por ventas (precio × unidades)', pdfPlata(precio * u)],
-          ['Plata para volver a surtir (costo × unidades)', pdfPlata(costo * u)],
-          ['Ganancia real del día (ganancia × unidades)', pdfPlata(ganDia)]
+          ['Unidades que vende al día', nf.format(u)],
+          ['Entra por ventas', pdfPlata(precio * u)],
+          ['Para volver a surtir', pdfPlata(costo * u)],
+          ['Ganancia real del día', pdfPlata(ganDia)]
         ],
-        didParseCell: function (data) {
-          resaltar(3)(data);
-          if (data.section === 'head' && data.column.index === 1) data.cell.styles.halign = 'right';
-        }
-      });
+        didParseCell: function (data) { resaltar(3)(data); cabeza(data); }
+      }, M + MITAD + 6, MITAD, y);
     }
+    y = Math.max(fin1, fin2) + 6;
 
     // 4. Reparto
     var colchon = 0, negocio = 0;
@@ -744,9 +802,7 @@
         body: [
           ['Sueldo fijo del emprendedor (para la casa)', pdfPlata(estado.sueldo)],
           ['Colchón de ahorro (' + p + ' % de la ganancia real)', pdfPlata(colchon)],
-          ['Se queda en la Unidad Productiva (surtir y crecer)', pdfPlata(negocio)],
-          ['Ahorro en una semana de 6 días', pdfPlata(colchon * 6)],
-          ['Ahorro en 4 semanas', pdfPlata(colchon * 24)]
+          ['Se queda en la Unidad Productiva (surtir y crecer)', pdfPlata(negocio)]
         ],
         didParseCell: function (data) {
           resaltar(2)(data);
@@ -765,13 +821,26 @@
       if (negocio < 0) lectura.push('El sueldo y el ahorro suman ' + pdfPlata(-negocio) + ' más de lo que la Unidad Productiva deja en el día: conviene bajar el sueldo o revisar precios y costos.');
     }
     titulo('Lectura del resultado');
-    y += 3;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor.apply(doc, TEXTO);
+    y += 3.5;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor.apply(doc, TEXTO);
     lectura.forEach(function (t) {
       var lineas = doc.splitTextToSize('•  ' + t, ANCHO);
-      if (y + lineas.length * 5 > 280) { doc.addPage(); y = 20; }
+      if (y + lineas.length * 4.6 > 280) { doc.addPage(); y = 20; }
       doc.text(lineas, M, y);
-      y += lineas.length * 5 + 2;
+      y += lineas.length * 4.6 + 1.8;
+    });
+    y += 4;
+
+    // Compromisos
+    titulo((u ? (ganDia > 0 ? '5' : '4') : '3') + '. Mis compromisos de esta semana');
+    y += 3.5;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor.apply(doc, TEXTO);
+    textosCompromisos(pdfPlata).forEach(function (t, i) {
+      var lineas = doc.splitTextToSize(limpio(t), ANCHO - 8);
+      if (y + lineas.length * 4.6 > 280) { doc.addPage(); y = 20; }
+      doc.setFont('helvetica', 'bold'); doc.setTextColor.apply(doc, NOCHE); doc.text((i + 1) + '.', M + 1, y);
+      doc.setFont('helvetica', 'normal'); doc.setTextColor.apply(doc, TEXTO); doc.text(lineas, M + 8, y);
+      y += lineas.length * 4.6 + 1.8;
     });
 
     // Pie de página en todas las hojas
