@@ -166,6 +166,11 @@
   .claro .mensaje { background: var(--celeste-claro); color: var(--noche); }
   .claro .mensaje.malo { background: var(--alerta-fondo); color: var(--alerta); }
 
+  .evidencia { border-color: var(--sol); border-width: 3px; }
+  .boton-ancho { width: 100%; justify-content: center; font-size: 19px; min-height: 58px; }
+  .pdf-estado { font-weight: 700; min-height: 1em; }
+  .pdf-estado.error { color: var(--alerta); }
+  .pdf-estado.ok { color: var(--noche); }
   .pie { text-align: center; font-size: 15px; color: var(--texto-suave); margin: 28px 0 0; }
   .pie b { color: var(--noche); }
 
@@ -225,7 +230,15 @@
 
   <!-- Paso 1 -->
   <section class="tarjeta" aria-labelledby="t1">
-    <div class="paso"><span class="num">1</span><h2 id="t1">Su producto</h2></div>
+    <div class="paso"><span class="num">1</span><h2 id="t1">Sus datos y su producto</h2></div>
+    <div class="campo">
+      <label for="nombre">Su nombre completo</label>
+      <input id="nombre" type="text" placeholder="Ej: María Pérez" autocomplete="name" maxlength="60">
+    </div>
+    <div class="campo">
+      <label for="unidad">Nombre de su Unidad Productiva</label>
+      <input id="unidad" type="text" placeholder="Ej: Empanadas Doña María" autocomplete="organization" maxlength="60">
+    </div>
     <div class="campo">
       <label for="producto">¿Qué producto o servicio vende?</label>
       <input id="producto" type="text" placeholder="Ej: empanada, jugo, corte de cabello" autocomplete="off" maxlength="60">
@@ -303,6 +316,18 @@
     <div id="res-reparto" class="claro" aria-live="polite"></div>
   </section>
 
+  <!-- Paso 5: evidencia -->
+  <section class="tarjeta evidencia" aria-labelledby="t6">
+    <div class="paso"><span class="num">5</span><h2 id="t6">Guarde su evidencia</h2></div>
+    <p class="ayuda" style="margin:0 0 14px">Descargue un PDF con sus costos y sus cálculos. Guárdelo: más adelante se lo pueden pedir como evidencia del Módulo 2.</p>
+    <button class="boton boton-sol boton-ancho" type="button" id="pdf">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 19h16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Descargar mi PDF
+    </button>
+    <p class="ayuda pdf-estado" id="pdf-estado" aria-live="polite"></p>
+    <p class="ayuda" style="margin-bottom:0">Si abrió esta página desde WhatsApp y el PDF no se descarga, ábrala en Chrome o Safari.</p>
+  </section>
+
   <p class="pie">Sus números <b>no se envían a ninguna parte</b>: se quedan solo en este celular.<br>
   Ruta 500+ · Fase ELEVA · Secretaría de Desarrollo Económico y Competitividad · Alcaldía de Santa Marta</p>
 </main>
@@ -314,6 +339,8 @@
   </div>
 </div>
 
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="vendor/jspdf.plugin.autotable.min.js"></script>
 <script>
 (function () {
   'use strict';
@@ -325,7 +352,7 @@
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
   var $ = function (id) { return document.getElementById(id); };
-  var estado = { producto: '', precio: 0, costos: [], unidades: 0, sueldo: 0, pct: 5 };
+  var estado = { nombre: '', unidad: '', producto: '', precio: 0, costos: [], unidades: 0, sueldo: 0, pct: 5 };
 
   // Formatear dinero mientras se escribe, manteniendo el cursor
   function formatear(el) {
@@ -385,6 +412,8 @@
       calcular();
     });
   }
+  enlazar('nombre', 'nombre', 'texto');
+  enlazar('unidad', 'unidad', 'texto');
   enlazar('producto', 'producto', 'texto');
   enlazar('precio', 'precio');
   enlazar('unidades', 'unidades');
@@ -531,6 +560,8 @@
     ];
   }
   function pintarTodo() {
+    $('nombre').value = estado.nombre || '';
+    $('unidad').value = estado.unidad || '';
     $('producto').value = estado.producto || '';
     $('precio').value = valorCampo(estado.precio, true);
     $('unidades').value = valorCampo(estado.unidades);
@@ -541,6 +572,7 @@
 
   $('ejemplo').addEventListener('click', function () {
     estado = {
+      nombre: estado.nombre, unidad: estado.unidad,
       producto: 'Empanada', precio: 2000, unidades: 100, sueldo: 50000, pct: 5,
       costos: [
         { nombre: 'Masa', valor: 300 }, { nombre: 'Relleno', valor: 500 },
@@ -551,11 +583,218 @@
     pintarTodo();
   });
   $('borrar').addEventListener('click', function () {
-    estado = { producto: '', precio: 0, costos: costosIniciales(), unidades: 0, sueldo: 0, pct: 5 };
+    estado = { nombre: '', unidad: '', producto: '', precio: 0, costos: costosIniciales(), unidades: 0, sueldo: 0, pct: 5 };
     pintarTodo();
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    $('producto').focus();
+    $('nombre').focus();
   });
+
+  // ---- PDF de evidencia ----
+  function pdfPlata(n) { return (n < 0 ? '-$' : '$') + nf.format(Math.abs(Math.round(n))); }
+  function pdfPct(n) { return (Math.round(n * 10) / 10).toString().replace('.', ',') + ' %'; }
+  function dos(n) { return (n < 10 ? '0' : '') + n; }
+  function slug(s) {
+    return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+  }
+  // Solo caracteres que la fuente estándar del PDF puede mostrar
+  function limpio(s) {
+    return String(s || '').replace(/[−–—]/g, '-').replace(/[^\x20-\x7E -ÿ]/g, '');
+  }
+  function estadoPdf(texto, tipo) {
+    var el = $('pdf-estado');
+    el.textContent = texto;
+    el.className = 'ayuda pdf-estado' + (tipo ? ' ' + tipo : '');
+  }
+
+  function generarPDF() {
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      estadoPdf('No se pudo preparar el PDF. Revise su conexión a internet y recargue la página.', 'error');
+      return;
+    }
+    if (!estado.nombre.trim()) {
+      estadoPdf('Escriba su nombre en el paso 1 para que aparezca en el PDF.', 'error');
+      $('nombre').focus();
+      return;
+    }
+    var costo = estado.costos.reduce(function (s, c) { return s + (c.valor || 0); }, 0);
+    var precio = estado.precio;
+    if (!precio || !costo) {
+      estadoPdf('Primero escriba el precio de venta y los costos de una unidad.', 'error');
+      $(precio ? 'filas' : 'precio').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    var gan = precio - costo;
+    var margen = gan / precio * 100;
+    var u = estado.unidades;
+    var ganDia = gan * u;
+    var p = Math.min(estado.pct, 100);
+
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    var NOCHE = [0, 86, 141], SOL = [255, 220, 42], CLARO = [227, 243, 251], TEXTO = [30, 51, 68];
+    var M = 15, ANCHO = 210 - 2 * M;
+    var ahora = new Date();
+    var fecha = dos(ahora.getDate()) + '/' + dos(ahora.getMonth() + 1) + '/' + ahora.getFullYear();
+    var hora = dos(ahora.getHours()) + ':' + dos(ahora.getMinutes());
+
+    // Encabezado
+    doc.setFillColor.apply(doc, NOCHE); doc.rect(0, 0, 210, 30, 'F');
+    doc.setFillColor.apply(doc, SOL); doc.rect(0, 30, 210, 2, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor.apply(doc, SOL);
+    doc.text('CUENTAS CLARAS  ·  MÓDULO 2  ·  EDUCACIÓN FINANCIERA', M, 9.5);
+    doc.setFontSize(19); doc.setTextColor(255, 255, 255);
+    doc.text('Mi Unidad Productiva en números', M, 18.5);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(207, 232, 245);
+    doc.text('Ruta 500+ · Fase ELEVA · Secretaría de Desarrollo Económico y Competitividad · Alcaldía de Santa Marta', M, 25.5);
+
+    var y = 39;
+    var base = {
+      margin: { left: M, right: M },
+      styles: { font: 'helvetica', fontSize: 9.5, cellPadding: 1.35, textColor: TEXTO, lineColor: [191, 228, 245], lineWidth: 0.2 },
+      headStyles: { fillColor: NOCHE, textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: CLARO },
+      columnStyles: { 1: { halign: 'right', cellWidth: 55 } }
+    };
+    function tabla(opc) {
+      doc.autoTable(Object.assign({}, base, opc, { startY: y }));
+      y = doc.lastAutoTable.finalY + 6;
+    }
+    function titulo(t) {
+      if (y > 262) { doc.addPage(); y = 20; }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor.apply(doc, NOCHE);
+      doc.text(t, M, y); y += 2.5;
+    }
+    function resaltar(fila) {
+      return function (data) {
+        if (data.section === 'body' && data.row.index === fila) {
+          data.cell.styles.fillColor = SOL; data.cell.styles.fontStyle = 'bold'; data.cell.styles.textColor = [0, 62, 102];
+        }
+      };
+    }
+
+    // Datos
+    tabla({
+      theme: 'plain',
+      body: [
+        ['Emprendedor(a)', limpio(estado.nombre.trim())],
+        ['Unidad Productiva', limpio(estado.unidad.trim()) || '-'],
+        ['Producto o servicio', limpio(estado.producto.trim()) || '-'],
+        ['Fecha', fecha + ' · ' + hora]
+      ],
+      styles: Object.assign({}, base.styles, { lineWidth: 0, cellPadding: 1.1, fontSize: 10 }),
+      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 45, textColor: NOCHE }, 1: { halign: 'left' } }
+    });
+
+    // 1. Costos
+    titulo('1. Lo que cuesta hacer una unidad');
+    var filasCosto = estado.costos.filter(function (c) { return c.valor || c.nombre; })
+      .map(function (c, i) { return [limpio(c.nombre.trim()) || 'Costo ' + (i + 1), pdfPlata(c.valor || 0)]; });
+    tabla({
+      head: [['Concepto', 'Valor por unidad']],
+      body: filasCosto,
+      foot: [['Costo total por unidad', pdfPlata(costo)]],
+      footStyles: { fillColor: NOCHE, textColor: 255, fontStyle: 'bold' },
+      columnStyles: { 1: { halign: 'right', cellWidth: 55 } },
+      didParseCell: function (data) { if ((data.section === 'head' || data.section === 'foot') && data.column.index === 1) data.cell.styles.halign = 'right'; }
+    });
+
+    // 2. Ganancia por unidad
+    titulo('2. Ganancia real por unidad');
+    tabla({
+      head: [['Cálculo', 'Resultado']],
+      body: [
+        ['Precio de venta', pdfPlata(precio)],
+        ['Costo total por unidad', pdfPlata(costo)],
+        ['Ganancia real por unidad (precio - costo)', pdfPlata(gan)],
+        ['Margen (ganancia real ÷ precio × 100)', pdfPct(margen)]
+      ],
+      didParseCell: function (data) {
+        resaltar(2)(data);
+        if (data.section === 'head' && data.column.index === 1) data.cell.styles.halign = 'right';
+      }
+    });
+
+    // 3. Día
+    if (u) {
+      titulo('3. Un día normal de ventas');
+      tabla({
+        head: [['Cálculo', 'Resultado']],
+        body: [
+          ['Unidades que vende en un día normal', nf.format(u)],
+          ['Entra por ventas (precio × unidades)', pdfPlata(precio * u)],
+          ['Plata para volver a surtir (costo × unidades)', pdfPlata(costo * u)],
+          ['Ganancia real del día (ganancia × unidades)', pdfPlata(ganDia)]
+        ],
+        didParseCell: function (data) {
+          resaltar(3)(data);
+          if (data.section === 'head' && data.column.index === 1) data.cell.styles.halign = 'right';
+        }
+      });
+    }
+
+    // 4. Reparto
+    var colchon = 0, negocio = 0;
+    if (u && ganDia > 0) {
+      colchon = Math.round(ganDia * p / 100);
+      negocio = ganDia - estado.sueldo - colchon;
+      titulo('4. Reparto de la ganancia real del día');
+      tabla({
+        head: [['Bolsillo', 'Valor']],
+        body: [
+          ['Sueldo fijo del emprendedor (para la casa)', pdfPlata(estado.sueldo)],
+          ['Colchón de ahorro (' + p + ' % de la ganancia real)', pdfPlata(colchon)],
+          ['Se queda en la Unidad Productiva (surtir y crecer)', pdfPlata(negocio)],
+          ['Ahorro en una semana de 6 días', pdfPlata(colchon * 6)],
+          ['Ahorro en 4 semanas', pdfPlata(colchon * 24)]
+        ],
+        didParseCell: function (data) {
+          resaltar(2)(data);
+          if (data.section === 'head' && data.column.index === 1) data.cell.styles.halign = 'right';
+        }
+      });
+    }
+
+    // Lectura del resultado
+    var lectura = [];
+    if (gan < 0) lectura.push('Con estos números pierde ' + pdfPlata(-gan) + ' en cada unidad: le cuesta más hacerla que lo que cobra. Debe revisar el precio o los costos.');
+    else if (gan === 0) lectura.push('Con estos números no gana nada: lo que cobra solo alcanza para reponer lo que gastó.');
+    else lectura.push('De cada $100 que vende, le quedan ' + pdfPlata(margen) + ' de ganancia real' + (margen < 15 ? ', un margen bajo: conviene revisar el precio o comprar más barato.' : '.'));
+    if (u && ganDia > 0) {
+      lectura.push('En un día normal entran ' + pdfPlata(precio * u) + ', pero solo ' + pdfPlata(ganDia) + ' son ganancia real. Los otros ' + pdfPlata(costo * u) + ' son para volver a surtir.');
+      if (negocio < 0) lectura.push('El sueldo y el ahorro suman ' + pdfPlata(-negocio) + ' más de lo que la Unidad Productiva deja en el día: conviene bajar el sueldo o revisar precios y costos.');
+    }
+    titulo('Lectura del resultado');
+    y += 3;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor.apply(doc, TEXTO);
+    lectura.forEach(function (t) {
+      var lineas = doc.splitTextToSize('•  ' + t, ANCHO);
+      if (y + lineas.length * 5 > 280) { doc.addPage(); y = 20; }
+      doc.text(lineas, M, y);
+      y += lineas.length * 5 + 2;
+    });
+
+    // Pie de página en todas las hojas
+    var total = doc.getNumberOfPages();
+    for (var i = 1; i <= total; i++) {
+      doc.setPage(i);
+      doc.setDrawColor(191, 228, 245); doc.setLineWidth(0.3); doc.line(M, 284, 210 - M, 284);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(74, 93, 110);
+      doc.text('Generado el ' + fecha + ' a las ' + hora + ' con la calculadora Cuentas claras · ' + location.host, M, 289);
+      doc.text('Página ' + i + ' de ' + total, 210 - M, 289, { align: 'right' });
+    }
+
+    var nombreArchivo = 'Cuentas-claras_' + (slug(estado.unidad) || slug(estado.nombre) || 'mi-unidad') + '_' +
+      ahora.getFullYear() + '-' + dos(ahora.getMonth() + 1) + '-' + dos(ahora.getDate()) + '.pdf';
+    try {
+      doc.save(nombreArchivo);
+      estadoPdf('Listo. Busque el archivo "' + nombreArchivo + '" en sus descargas.', 'ok');
+    } catch (e) {
+      try { window.open(doc.output('bloburl'), '_blank'); estadoPdf('El PDF se abrió en otra pestaña. Guárdelo desde allí.', 'ok'); }
+      catch (e2) { estadoPdf('No se pudo descargar. Abra esta página en Chrome o Safari e intente de nuevo.', 'error'); }
+    }
+  }
+  $('pdf').addEventListener('click', generarPDF);
 
   cargar();
   if (!estado.costos.length) estado.costos = costosIniciales();
